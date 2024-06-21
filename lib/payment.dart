@@ -1,8 +1,15 @@
-// payment.dart
+// ignore_for_file: unused_field, prefer_final_fields
 
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart' as dio; // Import dio
+import 'package:flutter_secure_storage/flutter_secure_storage.dart'
+    as storage; // Import flutter_secure_storage with alias 'storage'
 
 class PaymentPage extends StatefulWidget {
+  final int campaignId;
+
+  PaymentPage({required this.campaignId});
+
   @override
   _PaymentPageState createState() => _PaymentPageState();
 }
@@ -13,9 +20,145 @@ class _PaymentPageState extends State<PaymentPage> {
       TextEditingController(text: 'Reemar Martin');
   TextEditingController _emailController =
       TextEditingController(text: 'reemarmartin17@gmail.com');
+  final dio.Dio _dio = dio.Dio();
+  final storage.FlutterSecureStorage _storage = storage.FlutterSecureStorage();
+  bool _isSubmitting = false;
+  late Map<String, dynamic> _campaignData = {};
+
+  // Token disimpan sebagai konstanta
+  final String token =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozfQ.Iu93-P2k7hmryP9CSGMeZ8GCSrCRrJMIKQhlKydqibQ';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCampaignDetail(widget.campaignId);
+  }
+
+  Future<void> _fetchCampaignDetail(int campaignId) async {
+    final url = 'http://localhost:8080/api/v1/campaigns/$campaignId';
+    try {
+      final response = await _dio.get(url);
+      if (response.statusCode == 200) {
+        final jsonData = response.data;
+        final Map<String, dynamic> data = jsonData['data'];
+        setState(() {
+          _campaignData = data;
+        });
+      } else {
+        throw Exception('Failed to load campaign detail');
+      }
+    } catch (e) {
+      print('Error fetching campaign detail: $e');
+    }
+  }
+
+  Future<void> _submitDonation() async {
+    if (_isSubmitting) return;
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    final donationUrl = 'http://localhost:8080/api/v1/donations';
+    final data = {
+      'campaign_id': widget.campaignId,
+      'amount': _selectedAmount,
+    };
+
+    try {
+      final response = await _dio.post(
+        donationUrl,
+        data: data,
+        options: dio.Options(
+          headers: {
+            'Authorization': 'Bearer $token', // Gunakan token langsung di sini
+          },
+        ),
+      );
+
+      // Print the response for debugging purposes
+      print('Response data: ${response.data}');
+      print('Response status code: ${response.statusCode}');
+      print('Response headers: ${response.headers}');
+
+      if (response.statusCode == 200) {
+        _showSuccessMessage();
+      } else {
+        _showErrorMessage();
+      }
+    } catch (e) {
+      print('Error submitting donation: $e');
+      _showErrorMessage();
+    } finally {
+      setState(() {
+        _isSubmitting = false;
+      });
+    }
+  }
+
+  void _showSuccessMessage() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Sukses'),
+        content: Text('Donasi berhasil dilakukan. Terima kasih!'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).pop();
+            },
+            child: Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showErrorMessage() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Gagal'),
+        content: Text('Terjadi kesalahan saat mengirim donasi. Coba lagi.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_campaignData.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.blue,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+          title: Text(
+            'Pembayaran',
+            style: TextStyle(color: Colors.white),
+          ),
+          centerTitle: true,
+        ),
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.blue,
@@ -50,8 +193,7 @@ class _PaymentPageState extends State<PaymentPage> {
                   crossAxisCount: 3,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
-                  childAspectRatio:
-                      2.5, // Menyesuaikan rasio aspek untuk memperbesar ukuran
+                  childAspectRatio: 2.5,
                 ),
                 itemCount: 6,
                 itemBuilder: (context, index) {
@@ -86,7 +228,7 @@ class _PaymentPageState extends State<PaymentPage> {
                   Image.asset('assets/bri.png', height: 40),
                   SizedBox(width: 10),
                   Expanded(
-                    child: Text(''), // Menghilangkan tulisan BRI
+                    child: Text(''),
                   ),
                   TextButton(
                     onPressed: () {
@@ -111,11 +253,24 @@ class _PaymentPageState extends State<PaymentPage> {
                     color: Colors.blue),
               ),
               SizedBox(height: 20),
+              Text(
+                'Detail Kampanye',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              Text(
+                'Nama Kampanye: ${_campaignData['name']}',
+                style: TextStyle(fontSize: 16, color: Colors.black),
+              ),
+              SizedBox(height: 10),
+              Text(
+                'Target Donasi: Rp ${_campaignData['goal_amount'].toString()}',
+                style: TextStyle(fontSize: 16, color: Colors.black),
+              ),
+              SizedBox(height: 20),
               Center(
                 child: ElevatedButton(
-                  onPressed: () {
-                    // Aksi saat tombol "Bayar" ditekan
-                  },
+                  onPressed: _isSubmitting ? null : _submitDonation,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
                     foregroundColor: Colors.white,
@@ -128,7 +283,12 @@ class _PaymentPageState extends State<PaymentPage> {
                       borderRadius: BorderRadius.circular(30),
                     ),
                   ),
-                  child: Text('Bayar'),
+                  child: _isSubmitting
+                      ? CircularProgressIndicator(
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        )
+                      : Text('Bayar'),
                 ),
               ),
             ],
@@ -155,7 +315,7 @@ class _PaymentPageState extends State<PaymentPage> {
         padding: EdgeInsets.symmetric(vertical: 10, horizontal: 10),
         child: Center(
           child: Text(
-            amount.toString(),
+            'Rp ${amount.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
             style: TextStyle(
               color: _selectedAmount == amount
                   ? Colors.white

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import 'dart:convert';
 
 class RegisterPage extends StatefulWidget {
   @override
@@ -7,6 +9,67 @@ class RegisterPage extends StatefulWidget {
 
 class _RegisterPageState extends State<RegisterPage> {
   bool _isObscure = true;
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final Dio _dio = Dio();
+
+  Future<void> _register() async {
+    final url = 'http://localhost:8080/api/v1/users';
+
+    final body = json.encode({
+      'name': _nameController.text,
+      'email': _emailController.text,
+      'password': _passwordController.text,
+    });
+
+    try {
+      final response = await _dio.post(
+        url,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        ),
+        data: body,
+      );
+
+      print('Response status code: ${response.statusCode}');
+      print('Response data: ${response.data}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.data);
+        if (responseData['status'] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Pendaftaran berhasil!')),
+          );
+          Navigator.pushReplacementNamed(context, '/landing');
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(responseData['message'])),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text('Registrasi gagal. Status Code: ${response.statusCode}'),
+          ),
+        );
+      }
+    } catch (error) {
+      if (error is DioError) {
+        final dioError = error;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Terjadi kesalahan: ${dioError.message}')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Terjadi kesalahan: $error')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,11 +91,12 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
               SizedBox(height: 20),
               Image.asset(
-                'assets/register.png', // ganti dengan path gambar Anda
+                'assets/register.png',
                 height: 200,
               ),
               SizedBox(height: 20),
               TextField(
+                controller: _nameController,
                 decoration: InputDecoration(
                   labelText: 'Nama Lengkap',
                   hintText: 'Masukkan nama',
@@ -43,6 +107,7 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
               SizedBox(height: 20),
               TextField(
+                controller: _emailController,
                 decoration: InputDecoration(
                   labelText: 'Email',
                   hintText: 'Masukkan email',
@@ -53,6 +118,7 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
               SizedBox(height: 20),
               TextField(
+                controller: _passwordController,
                 obscureText: _isObscure,
                 decoration: InputDecoration(
                   labelText: 'Password',
@@ -75,7 +141,8 @@ class _RegisterPageState extends State<RegisterPage> {
               SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
-                  // Aksi saat tombol "Daftar" ditekan
+                  _register();
+                  Navigator.pushReplacementNamed(context, '/login');
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,

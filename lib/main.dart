@@ -1,12 +1,14 @@
 // main.dart
 
+// ignore_for_file: unused_import, use_key_in_widget_constructors, prefer_const_constructors
+
 import 'login.dart';
 import 'package:flutter/material.dart';
 import 'splash_screen.dart';
 import 'register.dart';
 import 'splash_screen_2.dart';
 import 'landing_page.dart';
-import 'detail.dart';
+import "detail.dart";
 import 'payment.dart';
 import 'method.dart';
 import 'scan.dart';
@@ -15,6 +17,8 @@ import 'account.dart';
 import 'edit.dart';
 import 'tentang.dart';
 import 'term.dart';
+
+import 'package:dio/dio.dart';
 
 void main() {
   runApp(MyApp());
@@ -30,15 +34,17 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => SplashScreen(),
+        '/': (context) => RegisterPage(),
         '/splash': (context) => SplashScreen(),
         '/home': (context) => HomePage(),
         '/register': (context) => RegisterPage(),
-        '/login': (context) => loginPage(),
+        '/login': (context) => LoginPage(),
         '/splash2': (context) => SplashScreen2(),
-        '/landing': (context) => LandingPage(),
-        '/detail': (context) => DetailPage(),
-        '/payment': (context) => PaymentPage(),
+        '/landing': (context) => LandingPage(
+              token: '',
+            ),
+        '/detail': (context) => DetailPage(campaignId: 0),
+        '/payment': (context) => PaymentPage(campaignId: 0),
         '/method': (context) => MethodPage(),
         '/scan': (context) => ScanPage(),
         '/history': (context) => HistoryPage(),

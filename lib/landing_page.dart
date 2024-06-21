@@ -1,15 +1,51 @@
-// landing_page.dart
+// ignore_for_file: unused_local_variable
 
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import 'detail.dart'; // Import file detail.dart untuk mengakses DetailPage
 
-class LandingPage extends StatelessWidget {
+class LandingPage extends StatefulWidget {
+  final String token;
+  LandingPage({required this.token});
+
+  @override
+  _LandingPageState createState() => _LandingPageState();
+}
+
+class _LandingPageState extends State<LandingPage> {
+  List<Map<String, dynamic>> _campaigns = [];
+  final Dio _dio = Dio();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCampaigns();
+  }
+
+  Future<void> _fetchCampaigns() async {
+    final url = 'http://localhost:8080/api/v1/campaigns';
+    try {
+      final response = await _dio.get(url);
+      if (response.statusCode == 200) {
+        final jsonData = response.data;
+        final List<dynamic> data = jsonData['data'];
+        setState(() {
+          _campaigns = List<Map<String, dynamic>>.from(data);
+        });
+      } else {
+        throw Exception('Failed to load campaigns');
+      }
+    } catch (e) {
+      print('Error fetching campaigns: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Padding(
-          padding: EdgeInsets.symmetric(
-              vertical: 8.0), // Menambahkan padding atas dan bawah
+          padding: EdgeInsets.symmetric(vertical: 8.0),
           child: TextField(
             decoration: InputDecoration(
               hintText: 'Cari donasi panti asuhan, kekurangan gizi, dll.',
@@ -35,27 +71,28 @@ class LandingPage extends StatelessWidget {
             mainAxisSpacing: 10,
             childAspectRatio: 0.75,
           ),
-          itemCount: 6,
+          itemCount: _campaigns.length,
           itemBuilder: (context, index) {
-            return DonationCard(
-              imageUrl:
-                  'assets/donation${index + 1}.png', // Ganti dengan path gambar yang sesuai
-              title: [
-                'Bantu Pengobatan Anak Penderita Kanker Otak',
-                'Berkah Jum\'at Sedekah Makanan Yatim Dhuafa',
-                'Pendidikan Layak untuk Generasi Masa Depan',
-                'Memberi Makanan bagi Anak-Anak Kurang Beruntung',
-                'Hidupkan Kembali Kawasan Hutan yang Terancam',
-                'Bantuan Kemanusiaan Korban Bencana',
-              ][index],
-              collectedAmount: [
-                50432000,
-                11826000,
-                12500000,
-                9200000,
-                8500000,
-                11200000
-              ][index],
+            final campaign = _campaigns[index];
+            final imageUrl =
+                campaign['image_url'] ?? ''; // Get image URL or empty string
+            return GestureDetector(
+              // Wrap the card with GestureDetector to make it clickable
+              onTap: () {
+                Navigator.push(
+                  // Navigate to DetailPage and pass the campaignId as parameter
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        DetailPage(campaignId: campaign['id']),
+                  ),
+                );
+              },
+              child: DonationCard(
+                title: campaign['name'],
+                imageUrl: 'assets/donation1.png',
+                collectedAmount: campaign['current_amount'],
+              ),
             );
           },
         ),
@@ -75,19 +112,30 @@ class LandingPage extends StatelessWidget {
             label: 'Akun',
           ),
         ],
+        currentIndex: 0, // Menandai tab Beranda sebagai yang aktif
+        onTap: (index) {
+          // Navigasi ke halaman yang sesuai berdasarkan tab yang ditekan
+          if (index == 0) {
+            Navigator.pushNamed(context, '/landing');
+          } else if (index == 1) {
+            Navigator.pushNamed(context, '/history');
+          } else if (index == 2) {
+            Navigator.pushNamed(context, '/account');
+          }
+        },
       ),
     );
   }
 }
 
 class DonationCard extends StatelessWidget {
-  final String imageUrl;
   final String title;
+  final String imageUrl;
   final int collectedAmount;
 
   DonationCard({
-    required this.imageUrl,
     required this.title,
+    required this.imageUrl,
     required this.collectedAmount,
   });
 
@@ -105,12 +153,19 @@ class DonationCard extends StatelessWidget {
               topLeft: Radius.circular(8),
               topRight: Radius.circular(8),
             ),
-            child: Image.asset(
-              imageUrl,
-              height: 100,
-              width: double.infinity,
-              fit: BoxFit.cover,
-            ),
+            child: imageUrl.isEmpty
+                ? Image.asset(
+                    'assets/default_image.png', // Use default image if imageUrl is empty
+                    height: 100,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  )
+                : Image.network(
+                    imageUrl,
+                    height: 100,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
           ),
           Padding(
             padding: EdgeInsets.all(8.0),
@@ -149,9 +204,7 @@ class DonationCard extends StatelessWidget {
                   backgroundColor: Colors.grey[300],
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
                 ),
-                SizedBox(
-                    height:
-                        4), // Mengurangi padding bottom antara LinearProgressIndicator dan bagian bawah kartu
+                SizedBox(height: 4),
               ],
             ),
           ),

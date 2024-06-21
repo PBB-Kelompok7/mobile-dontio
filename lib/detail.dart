@@ -1,10 +1,57 @@
-// detail.dart
-
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import 'payment.dart'; // Ganti 'your_project_name' dengan nama proyek Anda
 
-class DetailPage extends StatelessWidget {
+class DetailPage extends StatefulWidget {
+  final int campaignId;
+
+  DetailPage({required this.campaignId});
+
+  @override
+  _DetailPageState createState() => _DetailPageState();
+}
+
+class _DetailPageState extends State<DetailPage> {
+  late Map<String, dynamic> _campaignData;
+  final Dio _dio = Dio();
+
+  @override
+  void initState() {
+    super.initState();
+    _campaignData = {}; // Inisialisasi _campaignData dengan nilai awal
+    _fetchCampaignDetail(widget.campaignId);
+  }
+
+  Future<void> _fetchCampaignDetail(int campaignId) async {
+    final url = 'http://localhost:8080/api/v1/campaigns/$campaignId';
+    try {
+      final response = await _dio.get(url);
+      if (response.statusCode == 200) {
+        final jsonData = response.data;
+        final Map<String, dynamic> data = jsonData['data'];
+        setState(() {
+          _campaignData = data;
+        });
+      } else {
+        throw Exception('Failed to load campaign detail');
+      }
+    } catch (e) {
+      print('Error fetching campaign detail: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_campaignData.isEmpty) {
+      // Periksa apakah _campaignData masih kosong
+      return Scaffold(
+        appBar: AppBar(),
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -20,8 +67,8 @@ class DetailPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Image.asset(
-              'assets/donation2.png', // Ganti dengan path gambar yang sesuai
+            Image.network(
+              _campaignData['image_url'] ?? '',
               width: double.infinity,
               fit: BoxFit.cover,
             ),
@@ -31,29 +78,23 @@ class DetailPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Berkah Jum\'at Sedekah Makanan Yatim Dhuafa',
+                    _campaignData['name'],
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.verified, color: Colors.blue),
-                      SizedBox(width: 8),
-                      Text(
-                        'Yayasan Broyur Indonesia',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
+                  Text(
+                    _campaignData['user']['name'],
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                    ),
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Rp 11.826.000',
+                    'Rp ${_campaignData['current_amount'].toString()}',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -64,7 +105,7 @@ class DetailPage extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        '510 donatur',
+                        '${_campaignData['backer_count']} donatur',
                         style: TextStyle(
                           fontSize: 16,
                           color: Colors.grey[600],
@@ -72,7 +113,7 @@ class DetailPage extends StatelessWidget {
                       ),
                       SizedBox(width: 16),
                       Text(
-                        'Target : Rp 15.000.000',
+                        'Target : Rp ${_campaignData['goal_amount'].toString()}',
                         style: TextStyle(
                           fontSize: 16,
                           color: Colors.grey[600],
@@ -90,24 +131,22 @@ class DetailPage extends StatelessWidget {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Makan menjadi kebutuhan pokok bagi setiap orang, tidak terkecuali juga bagi anak anak panti, yatim dan dhuafa yang sedang masa pertumbuhan.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Makan yang cukup dan bergizi sangat mempengaruhi tumbuh kembangnya anak-anak. Namun tidak semua anak beruntung untuk makan yang cukup dan bergizi, banyak yang kadang tak makan. Bahkan panti asuhanpun kadang kesulitan memenuhi kebutuhan pangannya karena minimnya donatur.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Melalui Galang dana ini kami mengajak saudara saudari sekalian dalam program untuk memenuhi kebutuhan pokok, paket makanan, santunan tunai untuk yatim, dhuafa dan anak panti asuhan.',
+                    _campaignData['description'],
                     style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                   ),
                   SizedBox(height: 24),
                   Center(
                     child: ElevatedButton(
                       onPressed: () {
-                        // Aksi saat tombol "Donasi Sekarang" ditekan
+                        // Navigasi ke halaman pembayaran dengan membawa campaignId
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => PaymentPage(
+                              campaignId: widget.campaignId,
+                            ),
+                          ),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,

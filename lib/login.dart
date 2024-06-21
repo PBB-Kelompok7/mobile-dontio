@@ -1,13 +1,67 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart' as dio; // Import dio with prefix 'dio'
+import 'package:flutter_secure_storage/flutter_secure_storage.dart'
+    as storage; // Import flutter_secure_storage with prefix 'storage'
 
-class loginPage extends StatefulWidget {
+class LoginPage extends StatefulWidget {
   @override
   _LoginPageState createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<loginPage> {
-  bool _obscureText =
-      true; // Mengontrol apakah password disembunyikan atau tidak
+class _LoginPageState extends State<LoginPage> {
+  bool _obscureText = true;
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final dio.Dio _dio = dio.Dio(); // Use dio prefix
+  final storage.FlutterSecureStorage _storage =
+      storage.FlutterSecureStorage(); // Use storage prefix
+
+  Future<void> _login() async {
+    final url = 'http://localhost:8080/api/v1/sessions';
+    final body = {
+      'email': _emailController.text,
+      'password': _passwordController.text,
+    };
+
+    try {
+      final response = await _dio.post(
+        url,
+        data: body,
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = response.data;
+        if (responseData['meta']['status'] == 'success') {
+          final token = responseData['data']['token'];
+
+          await _storage.write(key: 'token', value: token);
+
+          // Print token for verification
+          print('Token: $token');
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Login berhasil!')),
+          );
+
+          Navigator.pushReplacementNamed(context, '/landing');
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(responseData['meta']['message'])),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Login gagal. Status Code: ${response.statusCode}'),
+          ),
+        );
+      }
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Terjadi kesalahan: $error')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +88,7 @@ class _LoginPageState extends State<loginPage> {
               ),
               SizedBox(height: 20),
               TextField(
+                controller: _emailController,
                 decoration: InputDecoration(
                   labelText: 'Email',
                   hintText: 'Masukkan email',
@@ -44,7 +99,8 @@ class _LoginPageState extends State<loginPage> {
               ),
               SizedBox(height: 20),
               TextField(
-                obscureText: _obscureText, // Mengontrol visibilitas password
+                controller: _passwordController,
+                obscureText: _obscureText,
                 decoration: InputDecoration(
                   labelText: 'Password',
                   hintText: 'Masukkan password',
@@ -57,8 +113,7 @@ class _LoginPageState extends State<loginPage> {
                     ),
                     onPressed: () {
                       setState(() {
-                        _obscureText =
-                            !_obscureText; // Mengubah status visibilitas
+                        _obscureText = !_obscureText;
                       });
                     },
                   ),
@@ -67,7 +122,8 @@ class _LoginPageState extends State<loginPage> {
               SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
-                  // Aksi saat tombol "Masuk" ditekan
+                  _login();
+                  Navigator.pushReplacementNamed(context, '/landing');
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
@@ -85,7 +141,6 @@ class _LoginPageState extends State<loginPage> {
               SizedBox(height: 20),
               TextButton(
                 onPressed: () {
-                  // Aksi saat tombol "Daftar" ditekan
                   Navigator.pushReplacementNamed(context, '/register');
                 },
                 child: Text(
